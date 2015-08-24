@@ -4,6 +4,7 @@ import json
 import requests
 
 from datetime import datetime
+from itertools import ifilter
 from pytz import utc
 from urlparse import urlparse
 
@@ -24,7 +25,7 @@ class Client:
         self._base_url = base_url
 
     def status(self):
-        ep = self.base_url + "/status"
+        ep = self._base_url + "/status"
         resp = requests.get(ep)
         return json.loads(resp.content)["status"]
 
@@ -33,19 +34,20 @@ class Client:
         headers["Content-Type"] = "application/json"
         headers["Date"] = datetime.now(utc).isoformat()
         headers["Signature-Version"] = self._sig_version
+
         if payload is not None:
             headers["Content-MD5"] = _md5(payload)
+
         signature = self._sign_request(urlparse(url).path, headers["Date"], headers.get("Content-MD5"), method)
-        headers["Authorization"] = "Sidecar " + self._access_key + ":" + signature
+        headers["Authorization"] = "SIDECAR " + self._access_key + ":" + signature
         req = self._methods_to_req_calls[method]
         return req(url=url, data=payload, headers=headers)
 
 
     def _sign_request(self, path, date, entity_md5, method="GET"):
         version = "1"
-        md5 = entity_md5 if entity_md5 else ""
-        to_sign = "\n".join([method, path, date, md5, version])
-        return hmac.new(self._secret_key, to_sign, hashlib.sha1).hexdigest()
+        to_sign = "\n".join(ifilter(lambda y: y is not None, [method, path, date, entity_md5, version]))
+        return hmac.new(self._secret_key, to_sign, hashlib.sha1).digest().encode("base64").rstrip("\n")
 
     def _md5(self, contents):
         return hashlib.md5(string).hexdigest()
