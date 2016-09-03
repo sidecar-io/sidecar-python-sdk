@@ -36,7 +36,7 @@ class Client:
         headers["Signature-Version"] = self._sig_version
 
         if payload is not None:
-            headers["Content-MD5"] = _md5(payload)
+            headers["Content-MD5"] = self._md5(payload)
 
         signature = self._sign_request(urlparse(url).path, headers["Date"], headers.get("Content-MD5"), method)
         headers["Authorization"] = "SIDECAR " + self._access_key + ":" + signature
@@ -50,7 +50,7 @@ class Client:
         return hmac.new(self._secret_key, to_sign, hashlib.sha1).digest().encode("base64").rstrip("\n")
 
     def _md5(self, contents):
-        return hashlib.md5(string).hexdigest()
+        return hashlib.md5(contents).hexdigest()
 
     def _validate_user_auth(self):
         ep = self._base_url + "/v1/event/status"
